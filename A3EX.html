@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A3圖片轉換器 (含尺寸顯示)</title>
+  <style>
+    body {
+      font-family: "Noto Sans TC", Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+    .card {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      max-width: 600px;
+      width: 100%;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    button, input[type="file"] {
+      margin: 8px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background-color: #4a90e2;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #357ABD;
+    }
+    input[type="file"] {
+      background-color: #6c757d;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+      color: #555;
+    }
+    .preview {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+    }
+    .preview-item {
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      text-align: center;
+    }
+    .preview img {
+      width: 200px;
+      height: auto;
+      border-radius: 8px;
+    }
+    .size-info {
+      margin-top: 8px;
+      font-size: 14px;
+      color: #555;
+    }
+    .progress-container {
+      width: 100%;
+      background-color: #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 20px;
+      height: 25px;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background-color: #4caf50;
+      text-align: center;
+      line-height: 25px;
+      color: white;
+      font-weight: bold;
+      transition: width 0.3s;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>A3圖片轉換器</h1>
+
+  <div class="card">
+    <input type="file" id="fileInput" multiple accept="image/*">
+
+    <label>選擇方向：</label>
+    <button onclick="setOrientation('portrait')">直式</button>
+    <button onclick="setOrientation('landscape')">橫式</button>
+
+    <label>選擇格式：</label>
+    <button onclick="setFormat('jpg')">JPG</button>
+    <button onclick="setFormat('png')">PNG</button>
+
+    <label>選擇解析度：</label>
+    <button onclick="setDPI(300)">300 DPI</button>
+    <button onclick="setDPI(150)">150 DPI</button>
+    <button onclick="setDPI(72)">72 DPI</button>
+
+    <br><br>
+    <button onclick="startConversion()">開始轉換並下載</button>
+
+    <div class="progress-container">
+      <div id="progressBar" class="progress-bar">0%</div>
+    </div>
+  </div>
+
+  <div class="preview" id="preview"></div>
+
+  <script>
+    let orientation = 'portrait';
+    let outputFormat = 'jpg';
+    let dpi = 300;
+
+    function setOrientation(dir) {
+      orientation = dir;
+      alert('已選擇：' + (dir === 'portrait' ? '直式' : '橫式'));
+    }
+
+    function setFormat(fmt) {
+      outputFormat = fmt;
+      alert('已選擇格式：' + fmt.toUpperCase());
+    }
+
+    function setDPI(value) {
+      dpi = value;
+      alert('已選擇解析度：' + dpi + ' DPI');
+    }
+
+    function startConversion() {
+      const fileInput = document.getElementById('fileInput');
+      const preview = document.getElementById('preview');
+      const progressBar = document.getElementById('progressBar');
+      preview.innerHTML = '';
+      progressBar.style.width = '0%';
+      progressBar.textContent = '0%';
+
+      if (!fileInput.files.length) {
+        alert('請先選擇圖片');
+        return;
+      }
+
+      const files = Array.from(fileInput.files);
+      const total = files.length;
+      let processed = 0;
+
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          const img = new Image();
+          img.onload = function() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // 設定A3尺寸
+            let width = 3508;
+            let height = 4961;
+            if (orientation === 'landscape') {
+              width = 4961;
+              height = 3508;
+            }
+
+            // 根據dpi調整
+            width = Math.round(width * dpi / 300);
+            height = Math.round(height * dpi / 300);
+
+            canvas.width = width;
+            canvas.height = height;
+
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'preview-item';
+
+            const previewImg = new Image();
+            previewImg.src = canvas.toDataURL(`image/${outputFormat}`);
+            itemDiv.appendChild(previewImg);
+
+            const sizeInfo = document.createElement('div');
+            sizeInfo.className = 'size-info';
+            sizeInfo.textContent = `${width} × ${height}`;
+            itemDiv.appendChild(sizeInfo);
+
+            preview.appendChild(itemDiv);
+
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL(`image/${outputFormat}`);
+            link.download = file.name.replace(/\.\w+$/, '') + `_A3.${outputFormat}`;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            processed++;
+            let progress = Math.round((processed / total) * 100);
+            progressBar.style.width = progress + '%';
+            progressBar.textContent = progress + '%';
+
+            if (processed === total) {
+              setTimeout(() => {
+                alert('全部轉換完成！');
+              }, 300);
+            }
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  </script>
+
+</body>
+</html>
